@@ -26,7 +26,6 @@ params = {'l2':4e-5,
           'max_word_len':12,
           'layers':2,
           'translate_dim':300,
-          # 'embedding_filepath':'/data/zperfetData/NLPData/glove.840B.300d.txt'
           'embedding_filepath':'D://代码//DIIN-in-Keras-master//data/glove.840B.300d.txt'
           }
 
@@ -58,18 +57,11 @@ def build_model(word_dict,char_dict, num_class=3, MAX_LEN=params['max_length']):
         shape=(MAX_LEN,),
         name='Input_Word1',
     )
-    # premise_char_input_layer = keras.layers.Input(
-    #     shape=(MAX_LEN, params['max_word_len']),
-    #     name='Input_Char1',
-    # )
+
     hypothesis_word_input_layer = keras.layers.Input(
         shape=(MAX_LEN,),
         name='Input_Word2',
     )
-    # hypothesis_char_input_layer = keras.layers.Input(
-    #     shape=(MAX_LEN, params['max_word_len']),
-    #     name='Input_Char2',
-    # )
     word_embd_weights = get_embdding_from_file(word_dict,params['embedding_filepath'] )
     word_embd_layer = keras.layers.Embedding(
         input_dim=len(word_dict),
@@ -96,10 +88,9 @@ def build_model(word_dict,char_dict, num_class=3, MAX_LEN=params['max_length']):
     prem_lstm_out_backward = Bilstm_backward(premise_word_embedding)
 
     prem_lstm_out = concatenate([prem_lstm_out_forward[0],prem_lstm_out_backward[0]])
-    # prem_lstm_out = Scale()([prem_lstm_out_forward[0],prem_lstm_out_backward[0]])
 
     prems.append(GlobalMaxPool1D()(prem_lstm_out))
-    prems.append(GlobalAvgPool1D()(prem_lstm_out))
+
 
     hypo_lstm_out_forward = Bilstm_forward(hypothesis_word_embedding)
     hypo_lstm_out_backward = Bilstm_backward(hypothesis_word_embedding)
@@ -108,16 +99,6 @@ def build_model(word_dict,char_dict, num_class=3, MAX_LEN=params['max_length']):
     hypos.append(GlobalMaxPool1D()(hypo_lstm_out))
     # Encoding
     for i in range(params['layers']):
-        # # premise_word_embedding = translate(concatenate([premise_word_embedding,prem_lstm_out[0]]))
-        # # hypothesis_word_embedding = translate(concatenate([hypothesis_word_embedding,hypo_lstm_out[0]]))
-        # Bilstm = Bidirectional(LSTM(params['lstm_dim'], return_sequences=True,return_state=True,recurrent_dropout=params['dropout_rate'],kernel_regularizer=l2(params['l2'])))
-        #
-        # prem_lstm_out= Bilstm(premise_word_embedding,initial_state=prem_lstm_out[1:])
-        # hypo_lstm_out= Bilstm(hypothesis_word_embedding,initial_state=hypo_lstm_out[1:])
-        #
-        # prems.append(GlobalMaxPool1D()(prem_lstm_out[0]))
-        # hypos.append(GlobalMaxPool1D()(hypo_lstm_out[0]))
-
         Bilstm_forward = LSTM(params['lstm_dim'], return_sequences=True, return_state=True, recurrent_dropout=params['dropout_rate'],
                  kernel_regularizer=l2(params['l2']))
         Bilstm_backward =LSTM(params['lstm_dim'], return_sequences=True, return_state=True, recurrent_dropout=params['dropout_rate'],
@@ -132,7 +113,7 @@ def build_model(word_dict,char_dict, num_class=3, MAX_LEN=params['max_length']):
         hypo_lstm_out_forward = Bilstm_forward(hypothesis_word_embedding,initial_state=hypo_lstm_out_forward[1:])
         hypo_lstm_out_backward = Bilstm_backward(hypothesis_word_embedding,initial_state=hypo_lstm_out_backward[1:])
         hypo_lstm_out = concatenate([hypo_lstm_out_forward[0], hypo_lstm_out_backward[0]])
-        # hypo_lstm_out = Scale()([hypo_lstm_out_forward[0], hypo_lstm_out_backward[0]])
+
         hypos.append(GlobalMaxPool1D()(hypo_lstm_out))
 
 
@@ -180,12 +161,6 @@ def get_input(sentences, word_unknown=1, char_unknown=1, word_ignore_case=False,
             else:
                 word_key = word
             word_embd_input[sentence_index][word_index] = word_dict.get(word_key, word_unknown)
-            # for char_index, char in enumerate(word):
-            #     if char_index >= max_word_len:
-            #         break
-            #     if char_ignore_case:
-            #         char = char.lower()
-            #     char_embd_input[sentence_index][word_index][char_index] = char_dict.get(char, char_unknown)
     return np.asarray(word_embd_input), np.asarray(char_embd_input)
 
 train_left_embd_input = get_input(sentences=training[0])
@@ -216,10 +191,6 @@ def scheduler(epoch):
     return K.get_value(model.optimizer.lr)
 
 callbacks = [EarlyStopping(patience=params['patience']), ModelCheckpoint(tmpfn, save_best_only=True, save_weights_only=True)]
-# callbacks = [EarlyStopping(patience=params['patience']), ModelCheckpoint(tmpfn, save_best_only=True, save_weights_only=True),LearningRateScheduler(scheduler)]
-
-# history = model.fit([train_left_embd_input[0],train_left_embd_input[1],  train_right_embd_input[0], train_right_embd_input[1]], training[2], batch_size=params['batch_size'], epochs=params['epochs'],
-#           validation_data=([val_left_embd_input[0],val_left_embd_input[1],  val_right_embd_input[0], val_right_embd_input[1]], validation[2]), callbacks=callbacks)
 history = model.fit([train_left_embd_input[0], train_right_embd_input[0],], training[2], batch_size=params['batch_size'], epochs=params['epochs'],
           validation_data=([val_left_embd_input[0], val_right_embd_input[0]], validation[2]), callbacks=callbacks)
 
