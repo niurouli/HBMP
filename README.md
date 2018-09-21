@@ -1,2 +1,2 @@
 # HBMP
-HNMP是keras实现
+  HMP是keras实现
